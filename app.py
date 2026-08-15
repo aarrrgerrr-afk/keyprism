@@ -793,53 +793,16 @@ class NanoApp:
             scrollbar_button_hover_color=COLORS["accent"])
         self.recent_list.pack(fill="x", padx=12, pady=(0, 10))
 
-        # ── CLOUD card (Railway connection) ─────────────────────
-        card = self._section_card(side)
-        title_row = ctk.CTkFrame(card, fg_color="transparent")
-        title_row.pack(fill="x", padx=14, pady=(10, 5))
-        bar = tk.Canvas(title_row, width=3, height=12, bg=COLORS["card"], highlightthickness=0)
-        bar.create_rectangle(0, 0, 3, 12, fill=COLORS["action"], outline="")
-        bar.pack(side="left", padx=(0, 7))
-        self.cloud_dot, self.cloud_dot_id = self._make_dot(
-            title_row, COLORS["card"], CLOUD_STATES["offline"]["color"])
-        self.cloud_dot.pack(side="left", padx=(0, 6))
-        self.cloud_label = ctk.CTkLabel(title_row, text=CLOUD_STATES["offline"]["word"],
-                                        font=(self.font_body, 10, "bold"),
-                                        text_color=COLORS["text_dim"])
-        self.cloud_label.pack(side="left")
-
-        self.cloud_url_entry = ctk.CTkEntry(
-            card, textvariable=self.cloud_url_var,
-            placeholder_text="https://your-service.up.railway.app",
-            height=28, corner_radius=10, fg_color=COLORS["surface"],
-            border_color=COLORS["border"], font=(self.font_mono, 9),
-            text_color=COLORS["text"], placeholder_text_color=COLORS["text_faint"])
-        self.cloud_url_entry.pack(fill="x", padx=12, pady=(0, 6))
-
-        cloud_actions = ctk.CTkFrame(card, fg_color="transparent")
-        cloud_actions.pack(fill="x", padx=12, pady=(0, 4))
-        self.btn_cloud_connect = ctk.CTkButton(
-            cloud_actions, text="CONNECT", command=self._on_cloud_connect, height=26,
-            corner_radius=13, fg_color=COLORS["action"], hover_color=COLORS["action_hover"],
-            font=(self.font_body, 9, "bold"))
-        self.btn_cloud_connect.pack(side="left", fill="x", expand=True, padx=(0, 4))
-        self.btn_cloud_sync = ctk.CTkButton(
-            cloud_actions, text="SYNC", command=self._on_cloud_sync, height=26,
-            corner_radius=13, fg_color=COLORS["surface"], hover_color=COLORS["surface_hover"],
-            text_color=COLORS["text_dim"], font=(self.font_body, 9, "bold"), state="disabled")
-        self.btn_cloud_sync.pack(side="left", fill="x", expand=True, padx=(4, 0))
-
-        self.btn_cloud_backup = ctk.CTkButton(
-            card, text="SYNC LIBRARY", command=self._on_cloud_backup, height=26,
-            corner_radius=13, fg_color=COLORS["surface"], hover_color=COLORS["surface_hover"],
-            text_color=COLORS["text_dim"], font=(self.font_body, 9, "bold"), state="disabled")
-        self.btn_cloud_backup.pack(fill="x", padx=12, pady=(0, 4))
-
-        self.cloud_status = ctk.CTkLabel(
-            card, text="Paste your Railway URL above and hit CONNECT",
-            font=(self.font_body, 9), text_color=COLORS["text_faint"],
-            anchor="w", justify="left", wraplength=290)
-        self.cloud_status.pack(fill="x", padx=14, pady=(0, 10))
+        # ── Cloud: hidden — auto-connects in background, no UI needed ──
+        # Create hidden widgets so cloud methods don't crash, but don't pack them
+        self.cloud_dot = tk.Canvas(side, width=1, height=1, bg=COLORS["card"], highlightthickness=0)
+        self.cloud_dot_id = self.cloud_dot.create_oval(0,0,1,1,fill="",outline="")
+        self.cloud_label = ctk.CTkLabel(side, text="", font=(self.font_body, 1))
+        self.cloud_url_entry = ctk.CTkEntry(side, textvariable=self.cloud_url_var, width=1)
+        self.btn_cloud_connect = ctk.CTkButton(side, text="", command=self._on_cloud_connect, width=1)
+        self.btn_cloud_sync = ctk.CTkButton(side, text="", command=self._on_cloud_sync, width=1)
+        self.btn_cloud_backup = ctk.CTkButton(side, text="", command=self._on_cloud_backup, width=1)
+        self.cloud_status = ctk.CTkLabel(side, text="", font=(self.font_body, 1))
 
         # ── SETTINGS card ───────────────────────────────────────
         card = self._section_card(side)
