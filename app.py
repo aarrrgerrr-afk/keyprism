@@ -41,7 +41,7 @@ from mapping import KEYS_61, KEYS_88_FULL
 from cloud import CloudClient, CloudError
 
 APP_NAME = "KeyPrism - Roblox Piano Auto Player"
-VERSION = "2.0.0"
+VERSION = "2.1.0"
 
 # ── Design tokens ────────────────────────────────────────────────
 # Synthwave dark: deep indigo surfaces, neon violet primary, rose CTA.
@@ -128,7 +128,7 @@ HISTORY_FILE = _app_dir() / "keyprism_history.json"
 RECENT_MAX = 6
 
 # ── App version (bump when releasing) ──
-APP_VERSION = "2.0.0"
+APP_VERSION = "2.1.0"
 
 # ── Cloud: hardcoded Railway URL (auto-connects on startup, no typing needed) ──
 DEFAULT_CLOUD_URL = "https://lavish-generosity-production-1ace.up.railway.app"
@@ -491,6 +491,11 @@ class NanoApp:
                 elif kind == "update_available":
                     ver, url, changelog = msg[1], msg[2], msg[3]
                     self._set_status(f"Update available: v{ver}", "loaded")
+                    # Update footer version label
+                    if hasattr(self, 'label_version'):
+                        self.label_version.configure(
+                            text=f"v{VERSION} ⬆ v{ver}",
+                            text_color=COLORS["warn"])
                     # Show update notification in status
                     if hasattr(self, 'label_status'):
                         self.label_status.configure(
@@ -1101,14 +1106,16 @@ class NanoApp:
         ctk.CTkLabel(hint_row, text="Switch to Roblox during the countdown",
                      font=(self.font_body, 9), text_color=COLORS["text_faint"]).pack(side="right", pady=3)
 
-        # ── Footer ──────────────────────────────────────────────
+        # ── Footer with version + update status ────────────────
         bottom = ctk.CTkFrame(root, fg_color=COLORS["surface"], corner_radius=0, height=30)
         bottom.pack(fill="x", side="bottom")
         bottom.pack_propagate(False)
         ctk.CTkLabel(bottom, text="For educational & entertainment use only",
                      font=(self.font_body, 9), text_color=COLORS["text_faint"]).pack(side="left", padx=16, pady=7)
-        ctk.CTkLabel(bottom, text=f"KeyPrism · falling notes · loop · auto-transpose · v{VERSION}",
-                     font=(self.font_body, 9), text_color=COLORS["text_faint"]).pack(side="right", padx=16, pady=7)
+        self.label_version = ctk.CTkLabel(
+            bottom, text=f"v{VERSION} ✓",
+            font=(self.font_body, 9, "bold"), text_color=COLORS["success"])
+        self.label_version.pack(side="right", padx=16, pady=7)
 
         # Initial piano draw once layout settles
         self.root.after(150, lambda: self.visual_piano.draw())
@@ -1589,7 +1596,8 @@ class NanoApp:
             target=lambda: self._cloud_sync_worker(), daemon=True).start()
 
     def _cloud_keepalive(self):
-        """Background thread: ping /api/health every 60s, reconnect if dropped."""
+        """Background thread: ping /api/health every 60s, check updates every 5 min."""
+        update_check_counter = 0
         while True:
             time.sleep(60)
             if not self.cloud_online or self.cloud_client is None:
@@ -1601,9 +1609,14 @@ class NanoApp:
             except CloudError:
                 self.cloud_online = False
                 self._push("cloud_error", "Connection lost — reconnecting…")
-                # Auto-reconnect after a short delay
                 time.sleep(3)
                 self.root.after(0, self._cloud_auto_connect)
+                continue
+            # Check for updates every 5 minutes
+            update_check_counter += 1
+            if update_check_counter >= 5:
+                update_check_counter = 0
+                self._check_for_update()
 
     # ── Auto-update ──────────────────────────────────────────────
 
