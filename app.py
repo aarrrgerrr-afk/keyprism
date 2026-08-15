@@ -117,8 +117,7 @@ HISTORY_FILE = _app_dir() / "keyprism_history.json"
 RECENT_MAX = 6
 
 # ── Cloud: hardcoded Railway URL (auto-connects on startup, no typing needed) ──
-# Replace this with your actual Railway service URL from Settings → Networking
-DEFAULT_CLOUD_URL = ""
+DEFAULT_CLOUD_URL = "https://lavish-generosity-production-1ace.up.railway.app"
 
 
 def _reduced_motion():
