@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+
+# Runtime state / local data (never commit user history or the cloud DB)
+keyprism_history.json
+server/keyprism.db
+*.log
+
+# Retired legacy "NanoPlayer" app (superseded by KeyPrism)
+NanoPlayer.py
+NanoPlayer.spec
+
+# Local tooling workspace
+.freebuff/
+
+# OS noise
+.DS_Store
+Thumbs.db

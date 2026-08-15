@@ -1,0 +1,2 @@
+# KeyPrism Cloud is 100% stdlib — no packages needed.
+# Railway still wants this file to detect a Python project.
