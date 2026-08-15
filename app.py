@@ -316,6 +316,14 @@ class NanoApp:
         if Path("midi_files/demo_twinkle.mid").exists():
             self.root.after(300, lambda: self.load_midi_path("midi_files/demo_twinkle.mid"))
 
+        # Auto-connect to cloud if URL was saved from a previous session
+        if self.cloud_url_var.get().strip():
+            self.root.after(2000, self._cloud_auto_connect)
+
+        # URL validation on focus-out
+        if USE_CTK:
+            self.cloud_url_entry.bind("<FocusOut>", self._on_cloud_url_validate)
+
     # ── helpers ──────────────────────────────────────────────────
 
     def _pick_font(self, candidates):
@@ -422,6 +430,14 @@ class NanoApp:
                     self.history["cloud_last_sync"] = time.time()
                     self._save_history()
                     self._render_hub_stats()
+                    # Auto-sync library on first connect (fire once)
+                    if not getattr(self, "_cloud_initial_synced", False):
+                        self._cloud_initial_synced = True
+                        self.root.after(500, self._on_cloud_backup)
+                    # Start keepalive ping thread
+                    if not getattr(self, "_keepalive_started", False):
+                        self._keepalive_started = True
+                        threading.Thread(target=self._cloud_keepalive, daemon=True).start()
                 elif kind == "cloud_synced":
                     st = self.history.setdefault("stats", {})
                     st["songs_played"] = max(st.get("songs_played", 0), msg[1].get("songs_played", 0))
@@ -442,6 +458,8 @@ class NanoApp:
                     self.btn_cloud_sync.configure(state="normal")
                     self.btn_cloud_backup.configure(state="normal")
                     self._scan_library()
+                elif kind == "cloud_url_valid":
+                    self._cloud_state("offline", f"URL is live — hit CONNECT to link ({msg[1]})")
                 elif kind == "cloud_error":
                     self.cloud_online = False
                     self.cloud_client = None
@@ -1431,7 +1449,13 @@ class NanoApp:
         except Exception:
             pass
 
-    def _on_cloud_connect(self):
+    def _cloud_auto_connect(self):
+        """Auto-connect to cloud on startup if a URL is saved."""
+        url = self.cloud_url_var.get().strip()
+        if url and not self.cloud_online:
+            self._on_cloud_connect(cold_start=True)
+
+    def _on_cloud_connect(self, cold_start=False):
         if self.cloud_online:
             self.cloud_online = False
             self.cloud_client = None
@@ -1446,13 +1470,16 @@ class NanoApp:
             return
         self.history["cloud_url"] = url
         self._save_history()
-        self._cloud_state("connecting", f"Contacting {url} …")
+        hint = " (Railway cold start — may take 30s)" if cold_start else ""
+        self._cloud_state("connecting", f"Contacting{hint} …")
         self.btn_cloud_connect.configure(state="disabled")
-        threading.Thread(target=self._cloud_connect_worker, args=(url,), daemon=True).start()
+        threading.Thread(target=self._cloud_connect_worker,
+                         args=(url, cold_start), daemon=True).start()
 
-    def _cloud_connect_worker(self, url):
+    def _cloud_connect_worker(self, url, cold_start=False):
+        timeout = 30.0 if cold_start else 8.0
         try:
-            client = CloudClient(url)
+            client = CloudClient(url, timeout=timeout)
             info = client.health()
             if info.get("status") != "ok":
                 raise CloudError("service reported non-ok status")
@@ -1465,7 +1492,16 @@ class NanoApp:
             self._push("cloud_connected", url, st.get("songs_played", 0),
                        st.get("notes_played", 0))
         except CloudError as e:
-            self._push("cloud_error", str(e))
+            err = str(e)
+            if "timed out" in err.lower() or "timeout" in err.lower():
+                hint = "Railway free tier cold starts take 30-60s — try again in a minute."
+                self._push("cloud_error", f"Server is waking up: {hint}")
+            elif "404" in err:
+                self._push("cloud_error", "URL not found — check your Railway service URL")
+            elif "refused" in err.lower():
+                self._push("cloud_error", "Connection refused — server may be starting up")
+            else:
+                self._push("cloud_error", f"Connection failed: {err}")
 
     def _on_cloud_sync(self):
         if not self.cloud_online:
@@ -1527,6 +1563,43 @@ class NanoApp:
             return
         threading.Thread(
             target=lambda: self._cloud_sync_worker(), daemon=True).start()
+
+    def _cloud_keepalive(self):
+        """Background thread: ping /api/health every 60s, reconnect if dropped."""
+        while True:
+            time.sleep(60)
+            if not self.cloud_online or self.cloud_client is None:
+                continue
+            try:
+                info = self.cloud_client.health()
+                if info.get("status") != "ok":
+                    raise CloudError("unhealthy")
+            except CloudError:
+                self.cloud_online = False
+                self._push("cloud_error", "Connection lost — reconnecting…")
+                # Auto-reconnect after a short delay
+                time.sleep(3)
+                self.root.after(0, self._cloud_auto_connect)
+
+    def _on_cloud_url_validate(self, event=None):
+        """Validate URL when the user tabs/clicks out of the entry."""
+        url = self.cloud_url_var.get().strip()
+        if not url or self.cloud_online:
+            return
+        # Quick ping to show the user whether the URL works
+        self._cloud_state("connecting", "Validating URL…")
+        threading.Thread(target=self._cloud_validate_worker, args=(url,), daemon=True).start()
+
+    def _cloud_validate_worker(self, url):
+        try:
+            client = CloudClient(url, timeout=10.0)
+            info = client.health()
+            if info.get("status") == "ok":
+                self._push("cloud_url_valid", url)
+            else:
+                self._push("cloud_error", "Server responded but is not healthy")
+        except CloudError as e:
+            self._push("cloud_error", f"Cannot reach server: {e}")
 
     # ── library + auto-transpose ─────────────────────────────────
 
