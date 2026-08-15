@@ -116,6 +116,10 @@ def _app_dir():
 HISTORY_FILE = _app_dir() / "keyprism_history.json"
 RECENT_MAX = 6
 
+# ── Cloud: hardcoded Railway URL (auto-connects on startup, no typing needed) ──
+# Replace this with your actual Railway service URL from Settings → Networking
+DEFAULT_CLOUD_URL = ""
+
 
 def _reduced_motion():
     """Respect the OS-level reduced-motion preference (Windows: Show animations)."""
@@ -303,7 +307,8 @@ class NanoApp:
         self.cloud_online = False
         self.cloud_client = None
         self._cloud_thread = None
-        self.cloud_url_var = tk.StringVar(value=self.history.get("cloud_url", ""))
+        self.cloud_url_var = tk.StringVar(
+            value=self.history.get("cloud_url") or DEFAULT_CLOUD_URL)
 
         self._set_window_icon()
         self._build_ui()

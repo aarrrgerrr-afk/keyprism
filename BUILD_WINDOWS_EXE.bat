@@ -1,10 +1,9 @@
 @echo off
-title Build NanoPlayer EXE
+title Build KeyPrism EXE
 python -m pip install pyinstaller mido pynput --quiet
-echo Building EXE... this takes 1-2 minutes
-pyinstaller --onefile --noconsole --name NanoPlayer --icon=NONE NanoPlayer.py --hidden-import mido --hidden-import pynput
+echo Building KeyPrism EXE... this takes 1-2 minutes
+pyinstaller --onefile --noconsole --name KeyPrism --icon=app.ico app.py --hidden-import mido --hidden-import pynput --collect-all customtkinter --add-data "logo_header.png;." --add-data "app.ico;."
 echo.
-echo DONE! Your EXE is in dist\NanoPlayer.exe
-echo This EXE works DIRECT without Python!
+echo DONE! Your EXE is in dist\KeyPrism.exe
 explorer dist
 pause
