@@ -47,28 +47,39 @@ VERSION = "2.0.0"
 # Synthwave dark: deep indigo surfaces, neon violet primary, rose CTA.
 # Text colors are chosen for >=4.5:1 contrast on their surfaces.
 COLORS = {
-    "bg": "#0F0F23",
-    "surface": "#171730",
-    "surface_hover": "#232345",
-    "card": "#1C1C38",
-    "border": "#2C2C52",
-    "accent": "#7C3AED",
-    "accent_hover": "#8B5CF6",
-    "accent_soft": "#A78BFA",
-    # Brand duotone follows the logo: violet (left) + electric cyan (right)
-    "action": "#22D3EE",
-    "action_hover": "#67E8F9",
-    "action_text": "#0F172A",
-    "text": "#E6E6F5",
-    "text_dim": "#9DA3C9",
-    "text_faint": "#6E7399",
-    "success": "#34D399",
-    "warn": "#FBBF24",
-    "danger": "#F87171",
-    "key_white": "#F4F4FB",
-    "key_black": "#252546",
-    "key_active": "#7C3AED",
-    "key_active_light": "#C4B5FD",
+    # ── Core palette: deep space + neon synthwave ──
+    "bg":           "#0A0A1A",
+    "surface":      "#12122A",
+    "surface_hover":"#1E1E3A",
+    "card":         "#16162E",
+    "card_hover":   "#1C1C3C",
+    "border":       "#2A2A4A",
+    "border_glow":  "#3A3A6A",
+    # ── Brand duotone: violet + electric cyan ──
+    "accent":       "#8B5CF6",
+    "accent_hover": "#A78BFA",
+    "accent_soft":  "#C4B5FD",
+    "accent_dim":   "#6D28D9",
+    "action":       "#06B6D4",
+    "action_hover": "#22D3EE",
+    "action_text":  "#0F172A",
+    "action_glow":  "#0891B2",
+    # ── Text hierarchy ──
+    "text":         "#F1F5F9",
+    "text_dim":     "#94A3B8",
+    "text_faint":   "#64748B",
+    "text_bright":  "#FFFFFF",
+    # ── Semantic ──
+    "success":      "#10B981",
+    "success_dim":  "#059669",
+    "warn":         "#F59E0B",
+    "danger":       "#EF4444",
+    # ── Piano keys ──
+    "key_white":    "#F8FAFC",
+    "key_black":    "#1E1B4B",
+    "key_active":   "#8B5CF6",
+    "key_active_light": "#DDD6FE",
+    "key_glow":     "#7C3AED40",
 }
 
 # Status pill / dot states -> (dot color, short word)
@@ -681,53 +692,64 @@ class NanoApp:
             self._build_tk_ui()
 
     def _section_card(self, parent):
-        card = ctk.CTkFrame(parent, fg_color=COLORS["card"], corner_radius=12)
+        card = ctk.CTkFrame(parent, fg_color=COLORS["card"], corner_radius=14,
+                           border_width=1, border_color=COLORS["border"])
         card.pack(fill="x", pady=(0, 10))
         return card
 
     def _section_title(self, card, text):
         row = ctk.CTkFrame(card, fg_color="transparent")
         row.pack(fill="x", padx=14, pady=(10, 5))
-        bar = tk.Canvas(row, width=3, height=12, bg=COLORS["card"], highlightthickness=0)
-        bar.create_rectangle(0, 0, 3, 12, fill=COLORS["accent"], outline="")
+        bar = tk.Canvas(row, width=3, height=14, bg=COLORS["card"], highlightthickness=0)
+        bar.create_rectangle(0, 0, 3, 14, fill=COLORS["accent"], outline="", width=0)
         bar.pack(side="left", padx=(0, 7))
-        ctk.CTkLabel(row, text=text, font=(self.font_body, 10, "bold"),
-                     text_color=COLORS["text_dim"]).pack(side="left")
+        ctk.CTkLabel(row, text=text, font=(self.font_body, 9, "bold"),
+                     text_color=COLORS["accent_soft"]).pack(side="left")
 
     def _build_ctk_ui(self):
         root = self.root
 
-        # ── Header ──────────────────────────────────────────────
-        header = ctk.CTkFrame(root, fg_color=COLORS["surface"], corner_radius=0, height=64)
+        # ── Header: polished dark bar with subtle bottom border ──
+        header = ctk.CTkFrame(root, fg_color=COLORS["surface"], corner_radius=0, height=68,
+                             border_width=0)
         header.pack(fill="x")
         header.pack_propagate(False)
+        # Subtle gradient line at the bottom of the header
+        line = tk.Canvas(header, height=2, bg=COLORS["surface"], highlightthickness=0)
+        line.pack(fill="x", side="bottom")
+        line.create_rectangle(0, 0, 2000, 2, fill=COLORS["accent_dim"], outline="")
 
-        # Brand logo — the synthwave crystal mark (transparent PNG)
+        # Brand logo — the synthwave crystal mark
         self.logo_img = tk.PhotoImage(file=str(_resource("logo_header.png")))
         tk.Label(header, image=self.logo_img, bg=COLORS["surface"]).pack(
-            side="left", padx=(18, 10), pady=12)
+            side="left", padx=(20, 12), pady=12)
 
-        ctk.CTkLabel(header, text="KEYPRISM", font=(self.font_brand, 19, "bold"),
-                     text_color=COLORS["text"]).pack(side="left")
-        ctk.CTkLabel(header, text="ROBLOX PIANO AUTO", font=(self.font_body, 10, "bold"),
-                     text_color=COLORS["text_dim"]).pack(side="left", padx=(12, 0), pady=(3, 0))
+        # Brand text stack
+        brand_stack = ctk.CTkFrame(header, fg_color="transparent")
+        brand_stack.pack(side="left", pady=14)
+        ctk.CTkLabel(brand_stack, text="KEYPRISM", font=(self.font_brand, 20, "bold"),
+                     text_color=COLORS["text_bright"]).pack(anchor="w")
+        ctk.CTkLabel(brand_stack, text="ROBLOX PIANO AUTO", font=(self.font_body, 9, "bold"),
+                     text_color=COLORS["accent_soft"]).pack(anchor="w")
 
         # Right side: status pill + load button
-        pill = ctk.CTkFrame(header, fg_color=COLORS["card"], corner_radius=13, height=26)
+        pill = ctk.CTkFrame(header, fg_color=COLORS["card"], corner_radius=13, height=28,
+                           border_width=1, border_color=COLORS["border"])
         self.status_dot, self.status_dot_id = self._make_dot(
             pill, COLORS["card"], STATUS_STATES["idle"]["color"])
-        self.status_dot.pack(side="left", padx=(11, 6), pady=8)
+        self.status_dot.pack(side="left", padx=(11, 6), pady=9)
         self.status_label = ctk.CTkLabel(pill, text="IDLE", font=(self.font_body, 9, "bold"),
                                          text_color=COLORS["text_dim"])
         self.status_label.pack(side="left", padx=(0, 12))
         pill.pack_propagate(False)
-        pill.pack(side="right", padx=(0, 12), pady=19)
+        pill.pack(side="right", padx=(0, 12), pady=20)
 
         self.btn_load = ctk.CTkButton(
             header, text="LOAD MIDI", command=self.load_midi,
             fg_color=COLORS["accent"], hover_color=COLORS["accent_hover"],
-            height=34, width=120, corner_radius=17, font=(self.font_body, 12, "bold"))
-        self.btn_load.pack(side="right", padx=(0, 18), pady=15)
+            height=36, width=130, corner_radius=18, font=(self.font_body, 11, "bold"),
+            border_width=0)
+        self.btn_load.pack(side="right", padx=(0, 20), pady=16)
         self._bind_focus_ring(self.btn_load)
 
         # ── Main layout: hub sidebar + player ───────────────────
@@ -764,31 +786,33 @@ class NanoApp:
         self.search_entry = ctk.CTkEntry(
             card, textvariable=self.search_var, placeholder_text="Search library…",
             height=30, corner_radius=10, fg_color=COLORS["surface"],
-            border_color=COLORS["border"], font=(self.font_body, 11),
-            text_color=COLORS["text"], placeholder_text_color=COLORS["text_faint"])
+            font=(self.font_body, 11),
+            text_color=COLORS["text"], placeholder_text_color=COLORS["text_faint"],
+            border_width=1, border_color=COLORS["border"])
         self.search_entry.pack(fill="x", padx=12, pady=(0, 8))
         self.search_entry.bind("<KeyRelease>", self._on_search_change)
         self.lib_rows = ctk.CTkScrollableFrame(
-            card, fg_color=COLORS["surface"], corner_radius=10, height=180,
+            card, fg_color=COLORS["surface"], corner_radius=12, height=180,
             scrollbar_fg_color=COLORS["surface"], scrollbar_button_color=COLORS["border"],
             scrollbar_button_hover_color=COLORS["accent"])
         self.lib_rows.pack(fill="x", padx=12, pady=(0, 8))
 
         actions = ctk.CTkFrame(card, fg_color="transparent")
         actions.pack(fill="x", padx=12, pady=(0, 10))
-        ctk.CTkButton(actions, text="LOAD MIDI", command=self.load_midi, height=28,
-                      corner_radius=14, fg_color=COLORS["accent"],
+        ctk.CTkButton(actions, text="LOAD MIDI", command=self.load_midi, height=30,
+                      corner_radius=15, fg_color=COLORS["accent"],
                       hover_color=COLORS["accent_hover"],
-                      font=(self.font_body, 9, "bold")).pack(side="left", fill="x", expand=True, padx=(0, 4))
-        ctk.CTkButton(actions, text="FOLDER", command=self._open_lib_folder, height=28,
-                      corner_radius=14, fg_color=COLORS["surface"],
+                      font=(self.font_body, 9, "bold"), border_width=0).pack(side="left", fill="x", expand=True, padx=(0, 4))
+        ctk.CTkButton(actions, text="FOLDER", command=self._open_lib_folder, height=30,
+                      corner_radius=15, fg_color=COLORS["surface"],
                       hover_color=COLORS["surface_hover"],
-                      font=(self.font_body, 9, "bold")).pack(side="left", fill="x", expand=True, padx=(4, 0))
+                      font=(self.font_body, 9, "bold"),
+                      border_width=1, border_color=COLORS["border"]).pack(side="left", fill="x", expand=True, padx=(4, 0))
 
         card = self._section_card(side)
         self._section_title(card, "RECENT")
         self.recent_list = ctk.CTkScrollableFrame(
-            card, fg_color=COLORS["surface"], corner_radius=10, height=96,
+            card, fg_color=COLORS["surface"], corner_radius=12, height=96,
             scrollbar_fg_color=COLORS["surface"], scrollbar_button_color=COLORS["border"],
             scrollbar_button_hover_color=COLORS["accent"])
         self.recent_list.pack(fill="x", padx=12, pady=(0, 10))
@@ -954,86 +978,95 @@ class NanoApp:
         self.canvas.bind("<Configure>", self._on_canvas_resize)
         self.visual_piano = VisualPiano(self.canvas, mode=self.mode, y_offset=self.fall_h)
 
-        # Transport
-        card = ctk.CTkFrame(center, fg_color=COLORS["card"], corner_radius=12)
+        # Transport: polished card with prominent controls
+        card = ctk.CTkFrame(center, fg_color=COLORS["card"], corner_radius=16,
+                           border_width=1, border_color=COLORS["border"])
         card.pack(fill="both", expand=True)
 
+        # Song info row
         np_row = ctk.CTkFrame(card, fg_color="transparent")
-        np_row.pack(fill="x", padx=18, pady=(16, 0))
+        np_row.pack(fill="x", padx=20, pady=(18, 0))
         self.label_now = ctk.CTkLabel(np_row, text="No song loaded",
-                                      font=(self.font_body, 15, "bold"),
-                                      text_color=COLORS["text"], anchor="w")
+                                      font=(self.font_body, 16, "bold"),
+                                      text_color=COLORS["text_bright"], anchor="w")
         self.label_now.pack(side="left", fill="x", expand=True)
-        self.label_elapsed = ctk.CTkLabel(np_row, text="0:00", font=(self.font_mono, 13, "bold"),
-                                          text_color=COLORS["text"], width=46, anchor="e")
+        self.label_elapsed = ctk.CTkLabel(np_row, text="0:00", font=(self.font_mono, 14, "bold"),
+                                          text_color=COLORS["text"], width=50, anchor="e")
         self.label_elapsed.pack(side="right")
         ctk.CTkLabel(np_row, text="/", font=(self.font_mono, 12),
                      text_color=COLORS["text_faint"]).pack(side="right", padx=4)
-        self.label_total = ctk.CTkLabel(np_row, text="0:00", font=(self.font_mono, 13, "bold"),
-                                        text_color=COLORS["text_dim"], width=46, anchor="w")
+        self.label_total = ctk.CTkLabel(np_row, text="0:00", font=(self.font_mono, 14, "bold"),
+                                        text_color=COLORS["text_dim"], width=50, anchor="w")
         self.label_total.pack(side="right")
 
-        # Progress slot — the big countdown numeral swaps in here during the
-        # focus delay, so nothing below shifts (motion-12).
-        prog_row = ctk.CTkFrame(card, fg_color="transparent", height=36)
-        prog_row.pack(fill="x", padx=18, pady=(10, 4))
+        # Progress bar with countdown slot
+        prog_row = ctk.CTkFrame(card, fg_color="transparent", height=40)
+        prog_row.pack(fill="x", padx=20, pady=(12, 4))
         prog_row.pack_propagate(False)
         self.progress = ctk.CTkProgressBar(
-            prog_row, progress_color=COLORS["action"], height=8, corner_radius=4,
+            prog_row, progress_color=COLORS["action"], height=10, corner_radius=5,
             fg_color=COLORS["surface"])
         self.progress.set(0)
-        self.progress.pack(side="left", fill="x", expand=True, pady=14)
+        self.progress.pack(side="left", fill="x", expand=True, pady=15)
         self.label_count = ctk.CTkLabel(prog_row, text="3",
-                                        font=(self.font_mono, 26, "bold"),
+                                        font=(self.font_mono, 28, "bold"),
                                         text_color=COLORS["warn"], width=120)
         self.label_count.pack_forget()
 
+        # Status row
         status_row = ctk.CTkFrame(card, fg_color="transparent")
-        status_row.pack(fill="x", padx=18, pady=(0, 0))
+        status_row.pack(fill="x", padx=20, pady=(0, 0))
         self.transport_dot, self.transport_dot_id = self._make_dot(
             status_row, COLORS["card"], STATUS_STATES["idle"]["color"])
-        self.transport_dot.pack(side="left", padx=(0, 8), pady=3)
+        self.transport_dot.pack(side="left", padx=(0, 8), pady=4)
         self.label_status = ctk.CTkLabel(status_row,
                                          text="Load a .mid, press PLAY, then switch to Roblox",
                                          font=(self.font_body, 11), text_color=COLORS["text_dim"],
                                          anchor="w")
         self.label_status.pack(side="left", fill="x", expand=True)
 
+        # Transport buttons: bigger, more prominent
         ctrl = ctk.CTkFrame(card, fg_color="transparent")
-        ctrl.pack(pady=(16, 8))
+        ctrl.pack(pady=(18, 10))
         self.btn_play = ctk.CTkButton(
-            ctrl, text="PLAY", command=self.play,
+            ctrl, text="▶  PLAY", command=self.play,
             fg_color=COLORS["action"], hover_color=COLORS["action_hover"],
             text_color=COLORS["action_text"],
-            width=170, height=46, corner_radius=23, font=(self.font_body, 14, "bold"))
-        self.btn_play.pack(side="left", padx=8)
+            width=180, height=50, corner_radius=25, font=(self.font_body, 14, "bold"),
+            border_width=0)
+        self.btn_play.pack(side="left", padx=10)
         self.btn_pause = ctk.CTkButton(
-            ctrl, text="PAUSE", command=self.pause,
+            ctrl, text="⏸  PAUSE", command=self.pause,
             fg_color=COLORS["surface"], hover_color=COLORS["surface_hover"],
-            width=110, height=46, corner_radius=12, font=(self.font_body, 12, "bold"))
-        self.btn_pause.pack(side="left", padx=8)
+            text_color=COLORS["text"],
+            width=120, height=50, corner_radius=14, font=(self.font_body, 12, "bold"),
+            border_width=1, border_color=COLORS["border"])
+        self.btn_pause.pack(side="left", padx=6)
         self.btn_stop = ctk.CTkButton(
-            ctrl, text="STOP", command=self.stop,
-            fg_color=COLORS["surface"], hover_color=COLORS["surface_hover"],
-            width=110, height=46, corner_radius=12, font=(self.font_body, 12, "bold"))
-        self.btn_stop.pack(side="left", padx=8)
+            ctrl, text="⏹  STOP", command=self.stop,
+            fg_color=COLORS["surface"], hover_color=COLORS["danger"],
+            text_color=COLORS["text"],
+            width=120, height=50, corner_radius=14, font=(self.font_body, 12, "bold"),
+            border_width=1, border_color=COLORS["border"])
+        self.btn_stop.pack(side="left", padx=6)
         for w in (self.btn_play, self.btn_pause, self.btn_stop):
             self._bind_focus_ring(w)
 
+        # Keyboard hints
         hint_row = ctk.CTkFrame(card, fg_color="transparent")
-        hint_row.pack(fill="x", padx=18, pady=(6, 16))
+        hint_row.pack(fill="x", padx=20, pady=(6, 18))
         h1 = ctk.CTkFrame(hint_row, fg_color="transparent")
-        h1.pack(side="left", padx=(0, 16))
+        h1.pack(side="left", padx=(0, 18))
         self._keycap(h1, "F6")
         ctk.CTkLabel(h1, text="Play / Pause", font=(self.font_body, 9),
                      text_color=COLORS["text_faint"]).pack(side="left", pady=3)
         h2 = ctk.CTkFrame(hint_row, fg_color="transparent")
-        h2.pack(side="left", padx=(0, 16))
+        h2.pack(side="left", padx=(0, 18))
         self._keycap(h2, "F7")
         ctk.CTkLabel(h2, text="Stop", font=(self.font_body, 9),
                      text_color=COLORS["text_faint"]).pack(side="left", pady=3)
         h3 = ctk.CTkFrame(hint_row, fg_color="transparent")
-        h3.pack(side="left", padx=(0, 16))
+        h3.pack(side="left", padx=(0, 18))
         self._keycap(h3, "Ctrl+O")
         ctk.CTkLabel(h3, text="Load MIDI", font=(self.font_body, 9),
                      text_color=COLORS["text_faint"]).pack(side="left", pady=3)
