@@ -118,13 +118,18 @@ def _resource(name):
 
 
 def _app_dir():
-    """Directory for user data (history/cache) — beside the app or the exe."""
+    """Directory for user data: LOCALAPPDATA/KeyPrism when frozen, script dir otherwise."""
     if getattr(sys, "frozen", False):
-        return Path(sys.executable).resolve().parent
+        # Use %LOCALAPPDATA% like a proper Windows app
+        local = os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
+        app_dir = Path(local) / "KeyPrism"
+        app_dir.mkdir(parents=True, exist_ok=True)
+        return app_dir
     return Path(__file__).resolve().parent
 
 
 HISTORY_FILE = _app_dir() / "keyprism_history.json"
+MIDI_DIR = _app_dir() / "midi_files"
 RECENT_MAX = 6
 
 # ── App version (bump when releasing) ──
@@ -330,8 +335,8 @@ class NanoApp:
         self.root.after(50, self._anim_loop)
 
         # Create midi folder + load first available song
-        Path("midi_files").mkdir(exist_ok=True)
-        midis = sorted(Path("midi_files").glob("*.mid"))
+        MIDI_DIR.mkdir(exist_ok=True)
+        midis = sorted(MIDI_DIR.glob("*.mid"))
         if midis:
             self.root.after(200, lambda p=str(midis[0]): self.load_midi_path(p))
 
@@ -1302,7 +1307,7 @@ class NanoApp:
     def load_midi(self):
         path = filedialog.askopenfilename(
             title="Select MIDI file",
-            initialdir="midi_files",
+            initialdir=str(MIDI_DIR),
             filetypes=[("MIDI files", "*.mid *.midi"), ("All", "*.*")]
         )
         if not path:
@@ -1562,7 +1567,7 @@ class NanoApp:
         try:
             client = self.cloud_client
             uploaded = 0
-            for path in sorted(Path("midi_files").glob("*.mid*")):
+            for path in sorted(MIDI_DIR.glob("*.mid*")):
                 meta = self._lib_cache.get(str(path), {})
                 try:
                     client.upload_song(path.name, path.read_bytes(), {
@@ -1573,14 +1578,14 @@ class NanoApp:
                 except CloudError:
                     continue
             remote = client.list_library()
-            local_names = {p.name for p in Path("midi_files").glob("*.mid*")}
+            local_names = {p.name for p in MIDI_DIR.glob("*.mid*")}
             fetched = 0
             for song in remote:
                 if song.get("name") in local_names:
                     continue
                 try:
                     data = client.download_song(song["id"])
-                    (Path("midi_files") / song["name"]).write_bytes(data)
+                    (MIDI_DIR / song["name"]).write_bytes(data)
                     fetched += 1
                 except Exception:
                     pass
@@ -1855,7 +1860,7 @@ start "" "{current_exe}"
 
     def _scan_library_worker(self):
         try:
-            for p in sorted(Path("midi_files").glob("*.mid*")):
+            for p in sorted(MIDI_DIR.glob("*.mid*")):
                 key = str(p)
                 try:
                     mtime = p.stat().st_mtime
@@ -1887,7 +1892,7 @@ start "" "{current_exe}"
         self._search_job = self.root.after(150, self._render_lib)
 
     def _open_lib_folder(self):
-        folder = Path("midi_files").resolve()
+        folder = MIDI_DIR.resolve()
         try:
             if hasattr(os, "startfile"):
                 os.startfile(str(folder))
