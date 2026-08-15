@@ -127,6 +127,9 @@ def _app_dir():
 HISTORY_FILE = _app_dir() / "keyprism_history.json"
 RECENT_MAX = 6
 
+# ── App version (bump when releasing) ──
+APP_VERSION = "2.0.0"
+
 # ── Cloud: hardcoded Railway URL (auto-connects on startup, no typing needed) ──
 DEFAULT_CLOUD_URL = "https://lavish-generosity-production-1ace.up.railway.app"
 
@@ -335,6 +338,8 @@ class NanoApp:
         # Auto-connect to cloud INSTANTLY if URL is set
         if self.cloud_url_var.get().strip():
             self.root.after(300, self._cloud_auto_connect)
+            # Check for updates after connecting (delayed to let connection establish)
+            self.root.after(5000, self._check_for_update)
 
         # URL validation on focus-out
         if USE_CTK:
@@ -483,6 +488,24 @@ class NanoApp:
                     self.btn_cloud_connect.configure(text="CONNECT", state="normal")
                     self.btn_cloud_sync.configure(state="disabled")
                     self.btn_cloud_backup.configure(state="disabled")
+                elif kind == "update_available":
+                    ver, url, changelog = msg[1], msg[2], msg[3]
+                    self._set_status(f"Update available: v{ver}", "loaded")
+                    # Show update notification in status
+                    if hasattr(self, 'label_status'):
+                        self.label_status.configure(
+                            text=f"⬆ Update v{ver} available — click to update",
+                            text_color=COLORS["warn"])
+                        self.label_status.bind("<Button-1>",
+                            lambda e: threading.Thread(target=self._download_update,
+                                                       args=(url,), daemon=True).start())
+                elif kind == "update_progress":
+                    self._set_status(msg[1], "loading")
+                elif kind == "update_ready":
+                    self._set_status("Update downloaded! Restarting…", "loaded")
+                    self.root.after(1000, lambda: self._apply_update(msg[1]))
+                elif kind == "update_error":
+                    self._set_status(f"Update failed: {msg[1]}", "error")
         except queue.Empty:
             pass
         self.root.after(30, self._poll_ui_queue)
@@ -1581,6 +1604,74 @@ class NanoApp:
                 # Auto-reconnect after a short delay
                 time.sleep(3)
                 self.root.after(0, self._cloud_auto_connect)
+
+    # ── Auto-update ──────────────────────────────────────────────
+
+    def _check_for_update(self):
+        """Check server for a newer version. Runs in background on startup."""
+        if not self.cloud_online or self.cloud_client is None:
+            return
+        try:
+            info = self.cloud_client._json_request("GET", "/api/version")
+            server_version = info.get("version", "")
+            download_url = info.get("download_url", "")
+            changelog = info.get("changelog", "")
+            if server_version and server_version != APP_VERSION:
+                self._push("update_available", server_version, download_url, changelog)
+        except Exception:
+            pass  # Silent fail — not critical
+
+    def _download_update(self, url):
+        """Download new exe and prepare for update. Runs in background thread."""
+        try:
+            self._push("update_progress", "Downloading update…")
+            import urllib.request
+            import tempfile
+            import shutil
+
+            # Download to temp file
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.exe')
+            urllib.request.urlretrieve(url, tmp.name)
+            tmp.close()
+
+            # Get paths
+            if getattr(sys, 'frozen', False):
+                current_exe = sys.executable
+                exe_dir = Path(current_exe).parent
+            else:
+                self._push("update_error", "Updates only work from the exe")
+                return
+
+            # Create update script
+            update_script = exe_dir / "_update.bat"
+            new_exe = tmp.name
+            old_exe = current_exe + ".old"
+
+            script = f'''@echo off
+ping 127.0.0.1 -n 3 > nul
+del /f /q "{old_exe}"
+move /y "{current_exe}" "{old_exe}"
+move /y "{new_exe}" "{current_exe}"
+del /f /q "{update_script}"
+start "" "{current_exe}"
+'''
+            update_script.write_text(script)
+
+            self._push("update_ready", str(update_script))
+        except Exception as e:
+            self._push("update_error", f"Download failed: {e}")
+
+    def _apply_update(self, script_path):
+        """Launch the update script and exit the app."""
+        try:
+            import subprocess
+            # Start the update script
+            subprocess.Popen(['cmd', '/c', str(script_path)],
+                           creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW)
+            # Exit the app
+            self.root.after(500, self.root.destroy)
+        except Exception as e:
+            self._push("update_error", f"Update failed: {e}")
 
     def _on_cloud_url_validate(self, event=None):
         """Validate URL when the user tabs/clicks out of the entry."""

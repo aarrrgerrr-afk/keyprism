@@ -30,6 +30,10 @@ DB_PATH = os.environ.get("KEYPRISM_DB", os.path.join(os.path.dirname(__file__), 
 HOST = "0.0.0.0"
 PORT = int(os.environ.get("PORT", "8000"))
 
+# Current app version — update this when pushing a new release
+APP_VERSION = "2.1.0"
+UPDATE_URL = "https://github.com/aarrrgerrr-afk/keyprism/releases/latest/download/KeyPrism.exe"
+
 _lock = threading.Lock()
 
 
@@ -184,6 +188,12 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/health":
             return self._json(200, {"status": "ok", "service": "keyprism-cloud",
                                     "time": time.time()})
+        if path == "/api/version":
+            return self._json(200, {
+                "version": APP_VERSION,
+                "download_url": UPDATE_URL,
+                "changelog": "UI redesign, multi-track songs, auto-update"
+            })
         if path == "/api/stats":
             return self._json(200, _get_stats())
         if path == "/api/library":
