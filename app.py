@@ -315,14 +315,15 @@ class NanoApp:
         self._poll_ui_queue()
         self.root.after(50, self._anim_loop)
 
-        # Demo: create sample midi folder and auto-load the demo song
+        # Create midi folder + load first available song
         Path("midi_files").mkdir(exist_ok=True)
-        if Path("midi_files/demo_twinkle.mid").exists():
-            self.root.after(300, lambda: self.load_midi_path("midi_files/demo_twinkle.mid"))
+        midis = sorted(Path("midi_files").glob("*.mid"))
+        if midis:
+            self.root.after(200, lambda p=str(midis[0]): self.load_midi_path(p))
 
-        # Auto-connect to cloud if URL was saved from a previous session
+        # Auto-connect to cloud INSTANTLY if URL is set
         if self.cloud_url_var.get().strip():
-            self.root.after(2000, self._cloud_auto_connect)
+            self.root.after(300, self._cloud_auto_connect)
 
         # URL validation on focus-out
         if USE_CTK:
